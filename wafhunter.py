@@ -12,7 +12,7 @@ init()
 
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
-def load_waf_signatures(filename='waf_signatures.json'):
+def load_waf_signatures(filename='docs/waf_signatures.json'):
     with open(filename, 'r') as file:
         return json.load(file)
 

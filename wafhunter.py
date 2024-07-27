@@ -160,28 +160,28 @@ def extract_website_info(url):
         print(f"{Fore.RED}[!]{Style.RESET_ALL} Error extracting website info: {e}")
         return {}
 
-def print_detailed_info(url, ip_address, server_info, meta_info, waf_similarities):
-    """Print detailed information about the website."""
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} URL: {url}")
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} IP Address: {ip_address}")
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} Server Info: {server_info[0]}")
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} X-Powered-By: {server_info[1]}")
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} Meta Information:")
+def print_detailed_info(url, ip_address, server_info, meta_info, waf_similarities, output=None):
+    """Print and optionally append detailed information about the website."""
+    details = []
+    details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} URL: {url}")
+    details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} IP Address: {ip_address}")
+    details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} Server Info: {server_info[0]}")
+    details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} X-Powered-By: {server_info[1]}")
+    details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} Meta Information:")
     for key, value in meta_info.items():
-        print(f"    {key}: {value}")
+        details.append(f"    {key}: {value}")
 
     if not waf_similarities:
-        print(f"{Fore.YELLOW}[!]{Style.RESET_ALL} No WAF detected.")
+        details.append(f"{Fore.YELLOW}[!]{Style.RESET_ALL} No WAF detected.")
     else:
-        print(f"{Fore.BLUE}[~]{Style.RESET_ALL} WAF Fingerprint:")
+        details.append(f"{Fore.BLUE}[~]{Style.RESET_ALL} WAF Fingerprint:")
         for waf, score in waf_similarities:
-            print(f"    {Fore.GREEN}[+]{Style.RESET_ALL} WAF: {waf} (Confidence: {score}%)")
+            details.append(f"    {Fore.GREEN}[+]{Style.RESET_ALL} WAF: {waf} (Confidence: {score}%)")
 
-def list_wafs():
-    """List all available WAFs from the JSON file."""
-    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} Listing all WAFs...")
-    for waf in WAF_SIGNATURES.keys():
-        print(f"    {Fore.GREEN}[+]{Style.RESET_ALL} {waf}")
+    if output is not None:
+        output.extend(details)
+    else:
+        print('\n'.join(details))
 
 def main():
     parser = argparse.ArgumentParser(description='WAF Hunter Tool')
@@ -205,7 +205,7 @@ def main():
         return
 
     print_banner()
-    
+
     proxies = {'http': args.proxy, 'https': args.proxy} if args.proxy else None
     try:
         response = requests.get(args.url, headers={'User-Agent': USER_AGENTS[0]}, proxies=proxies, verify=False)  # Disable SSL verification
@@ -225,17 +225,25 @@ def main():
     else:
         output.append(f"{Fore.YELLOW}[!]{Style.RESET_ALL} No WAF detected or unknown WAF")
 
-    # Extract and print website information
+    # Extract website information
     meta_info = extract_website_info(args.url)
     server_info = get_server_info(response.headers)
     ip_address = get_ip_address(args.url, proxies)
 
-    print_detailed_info(args.url, ip_address, server_info, meta_info, top_wafs)
+    # Print detailed info and add it to output if needed
+    print_detailed_info(args.url, ip_address, server_info, meta_info, top_wafs, output if args.output else None)
 
     if args.output:
-        with open(args.output, 'w') as file:
-            file.write('\n'.join(output))
+        try:
+            with open(args.output, 'w') as file:
+                file.write('\n'.join(output))
             print(f"{Fore.BLUE}[~]{Style.RESET_ALL} Output saved to {args.output}")
-
+        except IOError as e:
+            print(f"{Fore.RED}[!]{Style.RESET_ALL} Error writing to file: {e}")
+def list_wafs():
+    """List all available WAFs from the JSON file."""
+    print(f"{Fore.BLUE}[~]{Style.RESET_ALL} Listing all WAFs...")
+    for waf in WAF_SIGNATURES.keys():
+        print(f"    {Fore.GREEN}[+]{Style.RESET_ALL} {waf}")
 if __name__ == "__main__":
     main()
